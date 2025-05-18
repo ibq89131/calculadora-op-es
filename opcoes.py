@@ -1,28 +1,30 @@
-
 import streamlit as st
 import yfinance as yf
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-# Função para capturar dados de mercado
 def capturar_parametros(ticker, periodo='1y'):
-    dados = yf.download(ticker, period=periodo)
-    dados['Retornos'] = np.log(dados['Close'] / dados['Close'].shift(1))
-    dados = dados.dropna()
-    S0 = float(dados['Close'].iloc[-1])
-    mu = float(dados['Retornos'].mean() * 252)
-    sigma = float(dados['Retornos'].std() * np.sqrt(252))
-    return S0, mu, sigma, dados
+    try:
+        dados = yf.download(ticker, period=periodo)
+        if dados.empty or 'Close' not in dados.columns:
+            raise ValueError("Ticker inválido ou sem dados.")
+        dados['Retornos'] = np.log(dados['Close'] / dados['Close'].shift(1))
+        dados = dados.dropna()
+        S0 = float(dados['Close'].iloc[-1])
+        mu = float(dados['Retornos'].mean() * 252)
+        sigma = float(dados['Retornos'].std() * np.sqrt(252))
+        return S0, mu, sigma, dados
+    except Exception as e:
+        st.error(f"Erro ao capturar dados para o ticker '{ticker}': {e}")
+        return None, None, None, None
 
-# Europeia (Monte Carlo)
 def calcular_opcao_europeia(S0, K, T, r, sigma, n_sim):
     Z = np.random.standard_normal(n_sim)
     ST = float(S0) * np.exp((float(r) - 0.5 * float(sigma) ** 2) * float(T) + float(sigma) * np.sqrt(float(T)) * Z)
     payoff = np.maximum(ST - K, 0)
     return np.exp(-float(r) * float(T)) * np.mean(payoff)
 
-# Americana (Binomial)
 def calcular_opcao_americana(S0, K, T, r, sigma, tipo='call', n=100):
     dt = T / n
     u = np.exp(sigma * np.sqrt(dt))
@@ -47,7 +49,6 @@ def calcular_opcao_americana(S0, K, T, r, sigma, tipo='call', n=100):
             V[j, i] = max(exercicio, np.exp(-r * dt) * (p * V[j, i+1] + (1 - p) * V[j+1, i+1]))
     return V[0, 0]
 
-# Asiática (Monte Carlo com média aritmética)
 def calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=10000, steps=252):
     dt = T / steps
     S = np.zeros((n_sim, steps))
@@ -58,7 +59,6 @@ def calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=10000, steps=252):
     media = np.mean(S, axis=1)
     payoff = np.maximum(media - K, 0)
     return np.exp(-r * T) * np.mean(payoff)
-
 
 # Interface Streamlit
 st.title("Calculadora de Opções: Europeia, Americana e Asiática")
@@ -80,10 +80,11 @@ else:
 if st.button("Calcular"):
     with st.spinner("Calculando..."):
         S0, mu, sigma, dados = capturar_parametros(ticker)
-        if tipo_opcao == "Europeia":
-            preco = calcular_opcao_europeia(S0, K, T, r, sigma, n_sim)
-        elif tipo_opcao == "Americana":
-            preco = calcular_opcao_americana(S0, K, T, r, sigma, tipo=tipo, n=passos)
-        else:
-            preco = calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=n_sim, steps=steps)
-        st.success(f"Preço estimado da opção {tipo_opcao.lower()}: ${preco:.2f}")
+        if S0 is not None:
+            if tipo_opcao == "Europeia":
+                preco = calcular_opcao_europeia(S0, K, T, r, sigma, n_sim)
+            elif tipo_opcao == "Americana":
+                preco = calcular_opcao_americana(S0, K, T, r, sigma, tipo=tipo, n=passos)
+            else:
+                preco = calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=n_sim, steps=steps)
+            st.success(f"Preço estimado da opção {tipo_opcao.lower()}: ${preco:.2f}")
