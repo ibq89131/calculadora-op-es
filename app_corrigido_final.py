@@ -59,45 +59,29 @@ def calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=10000, steps=252):
 
 
 # Interface Streamlit
-st.title("Calculadora de Opções: Europeia, Americana, Asiática e Volatilidade Implícita")
-aba = st.selectbox("Escolha a aba", ["Preço da Opção", "Volatilidade Implícita"])
+st.title("Calculadora de Opções: Europeia, Americana e Asiática")
+tipo_opcao = st.selectbox("Tipo de opção", ["Europeia", "Americana", "Asiática"])
+ticker = st.text_input("Código do ativo (ex: AAPL)", "AAPL")
+K = st.number_input("Preço de exercício (Strike)", value=150.0)
+T = st.number_input("Tempo até o vencimento (em anos)", value=1.0)
+r = st.number_input("Taxa de juros livre de risco (anual)", value=0.05)
 
-if aba == "Preço da Opção":
-    tipo_opcao = st.selectbox("Tipo de opção", ["Europeia", "Americana", "Asiática"])
-    ticker = st.text_input("Código do ativo (ex: AAPL)", "AAPL")
-    K = st.number_input("Preço de exercício (Strike)", value=150.0)
-    T = st.number_input("Tempo até o vencimento (em anos)", value=1.0)
-    r = st.number_input("Taxa de juros livre de risco (anual)", value=0.05)
+if tipo_opcao == "Americana":
+    tipo = st.selectbox("Tipo (call ou put)", ["call", "put"])
+    passos = st.slider("Passos na árvore binomial", 10, 500, 100)
+elif tipo_opcao == "Asiática":
+    steps = st.slider("Passos simulados por ano", 50, 365, 252)
+    n_sim = st.slider("Número de simulações", 1000, 50000, 10000)
+else:
+    n_sim = st.slider("Número de simulações", 1000, 50000, 10000)
 
-    if tipo_opcao == "Americana":
-        tipo = st.selectbox("Tipo (call ou put)", ["call", "put"])
-        passos = st.slider("Passos na árvore binomial", 10, 500, 100)
-    elif tipo_opcao == "Asiática":
-        steps = st.slider("Passos simulados por ano", 50, 365, 252)
-        n_sim = st.slider("Número de simulações", 1000, 50000, 10000)
-    else:
-        n_sim = st.slider("Número de simulações", 1000, 50000, 10000)
-
-    if st.button("Calcular"):
-        with st.spinner("Calculando..."):
-            S0, mu, sigma, dados = capturar_parametros(ticker)
-            if tipo_opcao == "Europeia":
-                preco = calcular_opcao_europeia(S0, K, T, r, sigma, n_sim)
-            elif tipo_opcao == "Americana":
-                preco = calcular_opcao_americana(S0, K, T, r, sigma, tipo=tipo, n=passos)
-            else:
-                preco = calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=n_sim, steps=steps)
-            st.success(f"Preço estimado da opção {tipo_opcao.lower()}: ${preco:.2f}")
-
-elif aba == "Volatilidade Implícita":
-    st.subheader("Calcular volatilidade implícita para uma opção Europeia (call)")
-    S = st.number_input("Preço atual do ativo (S)", value=150.0)
-    K = st.number_input("Strike (K)", value=145.0)
-    T = st.number_input("Tempo até o vencimento (em anos)", value=1.0)
-    r = st.number_input("Taxa de juros livre de risco (r)", value=0.05)
-    preco_opcao = st.number_input("Preço de mercado da opção", value=12.0)
-
-    if st.button("Calcular volatilidade implícita"):
-        with st.spinner("Calculando..."):
-            sigma_implicita = calcular_volatilidade_implicita(preco_opcao, S, K, T, r)
-            st.success(f"Volatilidade implícita: {sigma_implicita * 100:.2f}%")
+if st.button("Calcular"):
+    with st.spinner("Calculando..."):
+        S0, mu, sigma, dados = capturar_parametros(ticker)
+        if tipo_opcao == "Europeia":
+            preco = calcular_opcao_europeia(S0, K, T, r, sigma, n_sim)
+        elif tipo_opcao == "Americana":
+            preco = calcular_opcao_americana(S0, K, T, r, sigma, tipo=tipo, n=passos)
+        else:
+            preco = calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=n_sim, steps=steps)
+        st.success(f"Preço estimado da opção {tipo_opcao.lower()}: ${preco:.2f}")
