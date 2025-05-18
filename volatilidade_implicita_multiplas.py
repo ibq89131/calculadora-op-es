@@ -1,15 +1,16 @@
 
+import streamlit as st
 import numpy as np
 from scipy.stats import norm
 import yfinance as yf
 
-# Função de Black-Scholes para opção call europeia
+# Black-Scholes para call europeia
 def black_scholes_call(S, K, T, r, sigma):
     d1 = (np.log(S/K) + (r + 0.5*sigma**2)*T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
     return S * norm.cdf(d1) - K * np.exp(-r*T) * norm.cdf(d2)
 
-# Cálculo da volatilidade implícita via método da bisseção
+# Volatilidade implícita via bisseção
 def calcular_volatilidade_implicita(preco_mercado, S, K, T, r, tol=1e-5, max_iter=100):
     sigma_low = 0.0001
     sigma_high = 5.0
@@ -24,21 +25,18 @@ def calcular_volatilidade_implicita(preco_mercado, S, K, T, r, tol=1e-5, max_ite
             sigma_low = sigma_mid
     return sigma_mid
 
-# Parâmetros de exemplo para AAPL
-ticker = "AAPL"
-K = 190  # Strike
-T = 0.5  # Tempo até o vencimento (em anos)
-r = 0.05  # Taxa de juros anual
-preco_mercado = 14.5  # Preço da call europeia no mercado
+# Streamlit app
+st.title("Calculadora de Volatilidade Implícita (Opção Europeia Call)")
 
-# Pegar último preço do ativo
-dados = yf.download(ticker, period='1y')
-S = float(dados['Close'].iloc[-1])
+ticker = st.text_input("Ticker da ação (ex: AAPL)", value="AAPL")
+K = st.number_input("Preço de exercício (Strike)", value=190.0)
+T = st.number_input("Tempo até o vencimento (em anos)", value=0.5)
+r = st.number_input("Taxa de juros livre de risco (anual)", value=0.05)
+preco_mercado = st.number_input("Preço de mercado da opção (call)", value=14.5)
 
-# Calcular volatilidade implícita para opção Europeia
-vol_europeia = calcular_volatilidade_implicita(preco_mercado, S, K, T, r)
-print(f"Volatilidade implícita (Europeia): {vol_europeia*100:.2f}%")
-
-# Estimativa de volatilidade implícita para Americanas e Asiáticas (assumindo Black-Scholes como proxy)
-print(f"Volatilidade implícita estimada (Americana): {vol_europeia*100:.2f}%")
-print(f"Volatilidade implícita estimada (Asiática): {vol_europeia*100:.2f}%")
+if st.button("Calcular volatilidade implícita"):
+    with st.spinner("Buscando dados e calculando..."):
+        dados = yf.download(ticker, period='1y')
+        S = float(dados['Close'].iloc[-1])
+        vol = calcular_volatilidade_implicita(preco_mercado, S, K, T, r)
+        st.success(f"Volatilidade implícita estimada: {vol * 100:.2f}%")
