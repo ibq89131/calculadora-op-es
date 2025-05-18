@@ -15,13 +15,14 @@ def capturar_parametros(ticker, periodo='1y'):
     sigma = float(dados['Retornos'].std() * np.sqrt(252))
     return S0, mu, sigma, dados
 
-# Modelos de opções
+# Europeia (Monte Carlo)
 def calcular_opcao_europeia(S0, K, T, r, sigma, n_sim):
     Z = np.random.standard_normal(n_sim)
     ST = float(S0) * np.exp((float(r) - 0.5 * float(sigma) ** 2) * float(T) + float(sigma) * np.sqrt(float(T)) * Z)
     payoff = np.maximum(ST - K, 0)
     return np.exp(-float(r) * float(T)) * np.mean(payoff)
 
+# Americana (Binomial)
 def calcular_opcao_americana(S0, K, T, r, sigma, tipo='call', n=100):
     dt = T / n
     u = np.exp(sigma * np.sqrt(dt))
@@ -46,6 +47,7 @@ def calcular_opcao_americana(S0, K, T, r, sigma, tipo='call', n=100):
             V[j, i] = max(exercicio, np.exp(-r * dt) * (p * V[j, i+1] + (1 - p) * V[j+1, i+1]))
     return V[0, 0]
 
+# Asiática (Monte Carlo com média aritmética)
 def calcular_opcao_asiatica(S0, K, T, r, sigma, n_sim=10000, steps=252):
     dt = T / steps
     S = np.zeros((n_sim, steps))
